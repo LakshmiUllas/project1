@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CineMatch - Movie Recommendation System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Hide scrollbars for the genre horizontal scroll bar */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        body { background-color: #fcfcfc; }
+    </style>
+</head>
+<body class="text-gray-800 min-h-screen flex flex-col font-sans antialiased">
+
+    <!-- Navigation Bar (Simple, clear text navigation with no brand logos) -->
+    <nav class="bg-white border-b border-gray-200">
+        <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+            <!-- Project Title (Plain bold text instead of a commercial logo) -->
+            <div class="cursor-pointer" onclick="resetPageToHome()">
+                <span class="font-bold text-lg text-gray-900 tracking-wide">CineMatch</span>
+                <span class="text-xs text-gray-400 ml-1.5 font-medium">Recommender System</span>
+            </div>
+            
+            <!-- Quick Link Controls -->
+            <div class="flex items-center gap-6">
+                <button onclick="resetPageToHome()" class="text-sm font-medium text-gray-500 hover:text-red-600 transition-colors">
+                    Browse Movies
+                </button>
+                <a href="#watchlistSection" id="watchlistNavLink" class="text-sm font-medium text-gray-500 hover:text-red-600 transition-colors hidden">
+                    My Watchlist
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Project Content -->
+    <main class="flex-grow max-w-5xl mx-auto px-4 py-8 w-full">
+        
+        <!-- Welcome Hero Section and Search Controls -->
+        <div class="text-center max-w-xl mx-auto mb-12 mt-4">
+            <h1 class="text-3xl font-bold text-gray-900 mb-3 tracking-tight">Movie Finder</h1>
+            <p class="text-sm text-gray-500 mb-6 leading-relaxed">Enter a movie title to calculate similarities and find matching recommendations based on genres and keywords.</p>
+
+            <!-- Search Form Container -->
+            <form id="searchForm" class="relative">
+                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400">
+                    <i class="fa-solid fa-magnifying-glass text-sm"></i>
+                </div>
+                <input type="text" id="searchInput" autocomplete="off"
+                    class="block w-full pl-11 pr-24 py-3.5 rounded-lg bg-white border border-gray-300 focus:outline-none focus:ring-1 focus:ring-red-500 focus:border-red-500 shadow-sm text-sm text-gray-800"
+                    placeholder="Search movies (Inception, Avatar, etc.)..." />
+                <button type="submit" class="absolute right-2 top-2 bottom-2 bg-gray-900 hover:bg-gray-800 text-white px-4 rounded font-medium text-xs transition">
+                    Search Matches
+                </button>
+                
+                <!-- Autocomplete Dropdown List -->
+                <div id="autocompleteBox" class="hidden absolute left-0 right-0 top-full mt-1.5 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-50 text-left">
+                    <ul id="autocompleteList"></ul>
+                </div>
+            </form>
+            
+            <!-- Search History Logs -->
+            <div id="historyLogs" class="mt-4 text-xs text-gray-400 text-left flex flex-wrap gap-2 items-center justify-center">
+                <!-- Log entries added dynamically here -->
+            </div>
+        </div>
+
+        <!-- Content Container (Swapped dynamically based on search) -->
+        <div id="contentArea">
+            
+            <!-- Default Home Browse View -->
+            <div id="browseSection">
+                <!-- Horizontal Filter Menu -->
+                <div class="flex overflow-x-auto no-scrollbar gap-2 mb-6 pb-2" id="genreFilters">
+                    <!-- Genre filters populated here -->
+                </div>
+                
+                <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2" id="sectionTitle">
+                    Trending Movies
+                </h2>
+                <!-- Movie Grid Container -->
+                <div id="movieGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+            </div>
+
+            <!-- Recommendations / Calculation View -->
+            <div id="recommendationsSection" class="hidden">
+                <!-- Selected Movie Highlight Block -->
+                <div id="targetMovieCard" class="mb-10 bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
+                    <!-- Target movie data injected here -->
+                </div>
+                
+                <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                    Similar Recommendations
+                </h2>
+                <!-- Recommendations Grid Container -->
+                <div id="recommendationsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+            </div>
+        </div>
+
+        <!-- Watchlist Container (Hidden automatically when empty) -->
+        <div id="watchlistSection" class="hidden mt-16 pt-8 border-t border-gray-200">
+            <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+                My Saved Watchlist
+            </h2>
+            <div id="watchlistGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+        </div>
+
+    </main>
+
+    <!-- Document Footer -->
+    <footer class="border-t border-gray-200 bg-white py-8 text-center text-gray-400 text-xs mt-auto">
+        <p>&copy; 2026 CineMatch. Standalone Computer Science Project Portfolio.</p>
+    </footer>
+
+    <!-- Detailed Movie Information Modal -->
+    <div id="movieModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
+        <div class="bg-white rounded-xl w-full max-w-xl overflow-hidden shadow-xl relative flex flex-col max-h-[85vh]">
+            <button onclick="closeModal()" class="absolute top-4 right-4 z-10 bg-gray-100 hover:bg-red-500 hover:text-white text-gray-600 rounded-full w-8 h-8 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+            <div class="p-6 md:p-8 overflow-y-auto">
+                <div class="flex items-center gap-2 mb-3">
+                    <span id="modalYear" class="bg-gray-100 text-gray-700 text-[10px] font-bold px-2 py-0.5 rounded"></span>
+                    <span class="flex items-center gap-1 text-yellow-600 font-bold text-xs">
+                        <i class="fa-solid fa-star"></i> <span id="modalRating"></span>
+                    </span>
+                </div>
+                <h2 id="modalTitle" class="text-2xl font-bold text-gray-900 mb-3"></h2>
+                <div id="modalGenres" class="flex flex-wrap gap-1 mb-5"></div>
+                
+                <h4 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Overview</h4>
+                <p id="modalOverview" class="text-gray-600 mb-6 leading-relaxed text-xs"></p>
+                
+                <div class="flex gap-3 mt-6 border-t border-gray-100 pt-5">
+                    <button id="modalTrailerBtn" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded font-medium transition flex items-center justify-center gap-2 text-xs shadow-sm">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i> Search Trailer
+                    </button>
+                    <button id="modalWatchlistBtn" class="flex-1 py-2 px-4 rounded font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition flex items-center justify-center gap-2 text-xs">
+                        Add to Watchlist
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // LOCAL DATABASE (Self-contained representation)
+        // ==========================================
+        const movieData = [
+          { id: 1, title: "Inception", year: 2010, rating: 8.8, genres: ["Action", "Sci-Fi", "Thriller"], tags: ["dream", "heist", "mind-bending", "nolan"], overview: "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O." },
+          { id: 2, title: "Interstellar", year: 2014, rating: 8.6, genres: ["Adventure", "Drama", "Sci-Fi"], tags: ["space", "time travel", "black hole", "future", "nolan"], overview: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival." },
+          { id: 3, title: "The Dark Knight", year: 2008, rating: 9.0, genres: ["Action", "Crime", "Drama"], tags: ["superhero", "batman", "joker", "nolan"], overview: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice." },
+          { id: 4, title: "The Matrix", year: 1999, rating: 8.7, genres: ["Action", "Sci-Fi"], tags: ["simulation", "hacker", "cyberpunk", "dystopia"], overview: "A computer hacker learns from mysterious rebels about the true nature of his reality and his role in the war against its controllers." },
+          { id: 5, title: "Avengers: Endgame", year: 2019, rating: 8.4, genres: ["Action", "Adventure", "Sci-Fi"], tags: ["superhero", "marvel", "time travel", "epic"], overview: "After the devastating events of Infinity War, the universe is in ruins. With the help of remaining allies, the Avengers assemble once more in order to reverse Thanos' actions." },
+          { id: 6, title: "Parasite", year: 2019, rating: 8.5, genres: ["Comedy", "Drama", "Thriller"], tags: ["class struggle", "dark comedy", "social commentary"], overview: "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan." },
+          { id: 7, title: "Joker", year: 2019, rating: 8.4, genres: ["Crime", "Drama", "Thriller"], tags: ["mental illness", "society", "gotham", "dark"], overview: "In Gotham City, mentally troubled comedian Arthur Fleck is disregarded and mistreated by society. He then embarks on a downward spiral of revolution and bloody crime." },
+          { id: 8, title: "Spider-Man: Into the Spider-Verse", year: 2018, rating: 8.4, genres: ["Animation", "Action", "Adventure"], tags: ["superhero", "marvel", "multiverse"], overview: "Teen Miles Morales becomes the Spider-Man of his universe, and must join with five spider-powered individuals from other dimensions to stop a threat for all realities." },
+          { id: 9, title: "Titanic", year: 1997, rating: 7.9, genres: ["Drama", "Romance"], tags: ["shipwreck", "love story", "historical"], overview: "A seventeen-year-old aristocrat falls in love with a kind but poor artist aboard the luxurious, ill-fated R.M.S. Titanic." },
+          { id: 10, title: "Avatar", year: 2009, rating: 7.9, genres: ["Action", "Adventure", "Fantasy", "Sci-Fi"], tags: ["alien", "space", "epic"], overview: "A paraplegic Marine dispatched to the moon Pandora on a unique mission becomes torn between following his orders and protecting the world he feels is his home." },
+          { id: 11, title: "Gladiator", year: 2000, rating: 8.5, genres: ["Action", "Adventure", "Drama"], tags: ["roman empire", "revenge", "epic"], overview: "A former Roman General sets out to exact vengeance against the corrupt emperor who murdered his family and sent him into slavery." },
+          { id: 12, title: "Mad Max: Fury Road", year: 2015, rating: 8.1, genres: ["Action", "Adventure", "Sci-Fi"], tags: ["post-apocalyptic", "desert", "survival"], overview: "In a post-apocalyptic wasteland, a woman rebels against a tyrannical ruler in search for her homeland with the aid of a group of female prisoners, a psychotic worshiper, and a drifter named Max." },
+          { id: 13, title: "Forrest Gump", year: 1994, rating: 8.8, genres: ["Drama", "Romance"], tags: ["life story", "history", "heartwarming"], overview: "The presidencies of Kennedy and Johnson, the events of Vietnam, Watergate, and other historical events unfold from the perspective of an Alabama man with an IQ of 75." },
+          { id: 14, title: "The Shawshank Redemption", year: 1994, rating: 9.3, genres: ["Drama"], tags: ["prison", "hope", "friendship"], overview: "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency." },
+          { id: 15, title: "Pulp Fiction", year: 1994, rating: 8.9, genres: ["Crime", "Drama"], tags: ["nonlinear", "mob", "dark comedy"], overview: "The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption." },
+          { id: 16, title: "Dune", year: 2021, rating: 8.0, genres: ["Action", "Adventure", "Sci-Fi"], tags: ["desert", "politics", "epic"], overview: "Feature adaptation of Frank Herbert's science fiction novel, about the son of a noble family entrusted with the protection of the most valuable asset and most vital element in the galaxy." },
+          { id: 17, title: "La La Land", year: 2016, rating: 8.0, genres: ["Comedy", "Drama", "Music"], tags: ["musical", "romance", "dreams"], overview: "While navigating their careers in Los Angeles, a pianist and an actress fall in love while attempting to reconcile their aspirations for the future." },
+          { id: 18, title: "The Silence of the Lambs", year: 1991, rating: 8.6, genres: ["Crime", "Drama", "Thriller"], tags: ["serial killer", "fbi", "psychological"], overview: "A young F.B.I. cadet must receive the help of an incarcerated and manipulative cannibal killer to help catch another serial killer, a madman who skins his victims." },
+          { id: 19, title: "Toy Story", year: 1995, rating: 8.3, genres: ["Animation", "Adventure", "Comedy"], tags: ["toys", "friendship", "childhood"], overview: "A cowboy doll is profoundly threatened and jealous when a new spaceman figure supplants him as top boy in a boy's room." },
+          { id: 20, title: "Se7en", year: 1995, rating: 8.6, genres: ["Crime", "Drama", "Mystery"], tags: ["serial killer", "deadly sins", "detective"], overview: "Two detectives, a rookie and a veteran, hunt a serial killer who uses the seven deadly sins as his motives." }
+        ];
+
+        // Watchlist persistent storage & Global Filters
+        let watchlist = JSON.parse(localStorage.getItem('saved_watchlist_ids')) || [];
+        let activeGenre = "All";
+        let currentModalMovie = null;
+        let searchLogs = JSON.parse(localStorage.getItem('search_logs')) || [];
+
+        // Main entry point when webpage loads
+        document.addEventListener('DOMContentLoaded', () => {
+            renderGenreFilters();
+            renderMovies(movieData, 'movieGrid');
+            renderWatchlist();
+            renderSearchHistory();
+        });
+
+        // Renders visual movie cards inside targeted lists (Grid Layouts)
+        function renderMovies(movies, containerId, displayScore = false) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+
+            if (movies.length === 0) {
+                container.innerHTML = `<p class="text-gray-400 text-sm col-span-full py-8 text-center">No matching movies found.</p>`;
+                return;
+            }
+
+            movies.forEach(movie => {
+                const isSaved = watchlist.includes(movie.id);
+                const scoreIndicator = (displayScore && movie.similarityScore) 
+                    ? `<span class="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded">${(movie.similarityScore * 10).toFixed(0)}% Match</span>` 
+                    : '';
+
+                // Build modern text layout card (removing dependencies on posters)
+                const cardHTML = `
+                    <div class="bg-white border border-gray-200 hover:border-gray-400 rounded-lg p-5 cursor-pointer shadow-sm hover:shadow transition-all flex flex-col justify-between h-48" onclick="openModal(${movie.id})">
+                        <div>
+                            <div class="flex justify-between items-center gap-2 mb-2">
+                                <span class="text-[9px] font-bold uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded">
+                                    ${movie.genres[0]}
+                                </span>
+                                ${scoreIndicator}
+                            </div>
+                            <h3 class="font-bold text-base text-gray-900 line-clamp-1">${movie.title}</h3>
+                            <p class="text-xs text-gray-400 mt-1.5 line-clamp-2 leading-relaxed">${movie.overview}</p>
+                        </div>
+                        <div>
+                            <div class="flex justify-between items-center text-xs text-gray-400 border-t border-gray-100 pt-3 mt-3">
+                                <span class="font-semibold">${movie.year}</span>
+                                <span class="flex items-center gap-1 text-yellow-600 font-semibold">
+                                    <i class="fa-solid fa-star text-[10px]"></i> ${movie.rating}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.innerHTML += cardHTML;
+            });
+        }
+
+        // Renders Horizontal Tab Buttons for categories (Genres)
+        function renderGenreFilters() {
+            // Find all unique genres inside the local database
+            const collectedGenres = ["All", ...Array.from(new Set(movieData.flatMap(m => m.genres))).sort()];
+            const container = document.getElementById('genreFilters');
+            container.innerHTML = '';
+            
+            collectedGenres.forEach(genre => {
+                const isActive = (genre === activeGenre);
+                const activeClasses = isActive 
+                    ? "bg-gray-900 text-white border-gray-900 shadow-sm" 
+                    : "bg-white text-gray-600 hover:bg-gray-50 border-gray-200 hover:border-gray-300";
+                
+                container.innerHTML += `
+                    <button onclick="handleGenreSelection('${genre}')" class="flex-shrink-0 px-4 py-1.5 rounded text-xs font-semibold border transition ${activeClasses}">
+                        ${genre}
+                    </button>
+                `;
+            });
+        }
+
+        // Filters UI rendering lists based on active category
+        function handleGenreSelection(genre) {
+            activeGenre = genre;
+            renderGenreFilters();
+            
+            const filteredMovies = (genre === "All") 
+                ? movieData 
+                : movieData.filter(m => m.genres.includes(genre));
+                
+            document.getElementById('sectionTitle').innerHTML = (genre === "All") 
+                ? "Trending Movies" 
+                : `${genre} Collection`;
+                
+            renderMovies(filteredMovies, 'movieGrid');
+        }
+
+        // Autocomplete functionality
+        const searchInput = document.getElementById('searchInput');
+        const searchForm = document.getElementById('searchForm');
+        const autocompleteBox = document.getElementById('autocompleteBox');
+        const autocompleteList = document.getElementById('autocompleteList');
+
+        searchInput.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase().trim();
+            if (query.length > 1) {
+                // Return exact or containing substring matches
+                const matches = movieData.filter(m => m.title.toLowerCase().includes(query)).slice(0, 5);
+                displayAutocompleteBox(matches);
+            } else {
+                autocompleteBox.classList.add('hidden');
+            }
+        });
+
+        function displayAutocompleteBox(matches) {
+            autocompleteList.innerHTML = '';
+            if (matches.length === 0) {
+                autocompleteBox.classList.add('hidden');
+                return;
+            }
+            matches.forEach(movie => {
+                autocompleteList.innerHTML += `
+                    <li onclick="handleAutocompleteSelection(${movie.id})" class="px-4 py-2.5 hover:bg-gray-50 cursor-pointer flex items-center justify-between border-b border-gray-100 last:border-0 transition-colors">
+                        <div>
+                            <p class="font-semibold text-xs text-gray-800">${movie.title}</p>
+                            <p class="text-[10px] text-gray-400">${movie.genres.join(", ")} &bull; ${movie.year}</p>
+                        </div>
+                        <span class="text-xs text-yellow-600 font-bold"><i class="fa-solid fa-star text-[9px] mr-1"></i>${movie.rating}</span>
+                    </li>
+                `;
+            });
+            autocompleteBox.classList.remove('hidden');
+        }
+
+        // Trigger recommendation logic on selection
+        function handleAutocompleteSelection(id) {
+            const selected = movieData.find(m => m.id === id);
+            if (selected) {
+                saveSearchLog(selected.title);
+                calculateContentBasedMatches(selected.id);
+            }
+        }
+
+        searchForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const query = searchInput.value.trim().toLowerCase();
+            if (!query) return;
+
+            const exactMatch = movieData.find(m => m.title.toLowerCase() === query);
+            if (exactMatch) {
+                saveSearchLog(exactMatch.title);
+                calculateContentBasedMatches(exactMatch.id);
+            } else {
+                // If no exact match exists, look for partial matches
+                const partialMatch = movieData.find(m => m.title.toLowerCase().includes(query));
+                if (partialMatch) {
+                    saveSearchLog(partialMatch.title);
+                    calculateContentBasedMatches(partialMatch.id);
+                } else {
+                    displayNoMovieFound(searchInput.value);
+                }
+            }
+        });
+
+        // Main Content-Based recommendation algorithm matching Genres & Tags
+        function calculateContentBasedMatches(targetId) {
+            const target = movieData.find(m => m.id === targetId);
+            searchInput.value = target.title;
+            autocompleteBox.classList.add('hidden');
+            
+            document.getElementById('browseSection').classList.add('hidden');
+            document.getElementById('recommendationsSection').classList.remove('hidden');
+
+            // Render current selected target highlighted at the top
+            document.getElementById('targetMovieCard').innerHTML = `
+                <div class="w-full">
+                    <div class="flex flex-wrap items-center justify-between gap-4 mb-3">
+                        <div>
+                            <span class="inline-block bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1.5">Your Choice</span>
+                            <h3 class="text-xl font-bold text-gray-900 leading-tight">${target.title} <span class="text-gray-400 font-normal">(${target.year})</span></h3>
+                        </div>
+                        <div class="flex items-center gap-1 text-yellow-600 font-bold text-xs bg-yellow-50 px-2.5 py-1 rounded border border-yellow-100">
+                            <i class="fa-solid fa-star"></i>
+                            <span>${target.rating}/10</span>
+                        </div>
+                    </div>
+                    <p class="text-gray-500 text-xs mb-4 leading-relaxed max-w-2xl">${target.overview}</p>
+                    <div class="flex flex-wrap gap-1.5">
+                        ${target.genres.map(g => `<span class="bg-gray-100 text-gray-600 text-[10px] px-2 py-0.5 rounded border border-gray-200 font-medium">${g}</span>`).join('')}
+                        ${target.tags.map(t => `<span class="bg-gray-50 text-gray-400 text-[10px] px-2 py-0.5 rounded font-medium">#${t}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+
+            // Score each other movie: Genres overlap has a heavier weight (+2) than Tags overlap (+1)
+            let scoredCollection = movieData.filter(m => m.id !== target.id).map(movie => {
+                let score = 0;
+                
+                // Count overlap intersections
+                const genreIntersection = movie.genres.filter(g => target.genres.includes(g)).length;
+                const tagIntersection = movie.tags.filter(t => target.tags.includes(t)).length;
+                
+                score += (genreIntersection * 2) + (tagIntersection * 1);
+                
+                // Year context: minor similarity weighting boost (+0.5) if released in similar era
+                if (Math.abs(movie.year - target.year) <= 5) {
+                    score += 0.5;
+                }
+                
+                return { ...movie, similarityScore: score };
+            });
+
+            // Filter out non-matching titles, sort descending by score, take top 6 recommendations
+            const matches = scoredCollection
+                .filter(m => m.similarityScore > 0)
+                .sort((a, b) => b.similarityScore - a.similarityScore)
+                .slice(0, 6);
+
+            renderMovies(matches, 'recommendationsGrid', true);
+        }
+
+        // Display No Results page state safely
+        function displayNoMovieFound(term) {
+            autocompleteBox.classList.add('hidden');
+            document.getElementById('browseSection').classList.add('hidden');
+            document.getElementById('recommendationsSection').classList.remove('hidden');
+
+            document.getElementById('targetMovieCard').innerHTML = `
+                <div class="text-center py-6">
+                    <i class="fa-solid fa-triangle-exclamation text-xl text-yellow-500 mb-2"></i>
+                    <h3 class="font-bold text-base text-gray-900 mb-1">No matches found for "${term}"</h3>
+                    <p class="text-xs text-gray-400 mb-4 max-w-sm mx-auto">Verify the spelling or choose one of our catalog films inside the Browse lists.</p>
+                    <button onclick="resetPageToHome()" class="text-xs text-red-600 font-semibold hover:underline">
+                        Return to catalog list
+                    </button>
+                </div>
+            `;
+            document.getElementById('recommendationsGrid').innerHTML = '';
+        }
+
+        function resetPageToHome() {
+            searchInput.value = "";
+            autocompleteBox.classList.add('hidden');
+            document.getElementById('browseSection').classList.remove('hidden');
+            document.getElementById('recommendationsSection').classList.add('hidden');
+            activeGenre = "All";
+            handleGenreSelection("All");
+        }
+
+        // User Watchlist LocalStorage sync actions
+        function renderWatchlist() {
+            const watchlistContainer = document.getElementById('watchlistSection');
+            const navLink = document.getElementById('watchlistNavLink');
+            
+            if (watchlist.length > 0) {
+                watchlistContainer.classList.remove('hidden');
+                navLink.classList.remove('hidden');
+                
+                const watchlistItems = movieData.filter(m => watchlist.includes(m.id));
+                renderMovies(watchlistItems, 'watchlistGrid');
+            } else {
+                watchlistContainer.classList.add('hidden');
+                navLink.classList.add('hidden');
+            }
+        }
+
+        // Details Popup Modal
+        function openModal(id) {
+            currentModalMovie = movieData.find(m => m.id === id);
+            const m = currentModalMovie;
+            
+            document.getElementById('modalTitle').textContent = m.title;
+            document.getElementById('modalYear').textContent = m.year;
+            document.getElementById('modalRating').textContent = m.rating;
+            document.getElementById('modalOverview').textContent = m.overview;
+            
+            document.getElementById('modalGenres').innerHTML = m.genres.map(g => 
+                `<span class="text-[10px] border border-gray-200 text-gray-500 px-2 py-0.5 rounded bg-gray-50 font-medium">${g}</span>`
+            ).join('');
+
+            // Safe external link to YouTube search terms
+            document.getElementById('modalTrailerBtn').onclick = () => {
+                window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(m.title + ' official trailer')}`, '_blank');
+            };
+
+            updateWatchlistBtnLabel();
+            document.getElementById('movieModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('movieModal').classList.add('hidden');
+            currentModalMovie = null;
+        }
+
+        // Syncs Modal interface save button label
+        function updateWatchlistBtnLabel() {
+            const btn = document.getElementById('modalWatchlistBtn');
+            const isAlreadySaved = watchlist.includes(currentModalMovie.id);
+            
+            if (isAlreadySaved) {
+                btn.innerHTML = `<i class="fa-solid fa-check text-xs"></i> Saved to List`;
+                btn.className = "flex-1 py-2 px-4 rounded font-medium bg-gray-100 text-gray-800 transition text-xs";
+            } else {
+                btn.innerHTML = `Save to Watchlist`;
+                btn.className = "flex-1 py-2 px-4 rounded font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition text-xs";
+            }
+            
+            btn.onclick = () => {
+                if (isAlreadySaved) {
+                    watchlist = watchlist.filter(id => id !== currentModalMovie.id);
+                } else {
+                    watchlist.push(currentModalMovie.id);
+                }
+                localStorage.setItem('saved_watchlist_ids', JSON.stringify(watchlist));
+                
+                updateWatchlistBtnLabel();
+                renderWatchlist();
+                
+                // Refresh main browse categories
+                if (!document.getElementById('browseSection').classList.contains('hidden')) {
+                    handleGenreSelection(activeGenre);
+                }
+            };
+        }
+
+        // Search Log Operations
+        function saveSearchLog(term) {
+            if (!searchLogs.includes(term)) {
+                // Keep the last 5 logs
+                searchLogs = [term, ...searchLogs].slice(0, 5);
+                localStorage.setItem('search_logs', JSON.stringify(searchLogs));
+                renderSearchHistory();
+            }
+        }
+
+        function renderSearchHistory() {
+            const container = document.getElementById('historyLogs');
+            if (searchLogs.length === 0) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let logsHTML = `<span class="font-semibold text-gray-400">Recents:</span>`;
+            searchLogs.forEach(term => {
+                logsHTML += `
+                    <button onclick="handleHistoryLogClick('${term}')" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-2.5 py-1 rounded text-[10px] transition font-medium">
+                        ${term}
+                    </button>
+                `;
+            });
+            container.innerHTML = logsHTML;
+        }
+
+        function handleHistoryLogClick(term) {
+            searchInput.value = term;
+            const match = movieData.find(m => m.title.toLowerCase() === term.toLowerCase());
+            if (match) {
+                calculateContentBasedMatches(match.id);
+            }
+        }
+
+        // Dropdown dismiss when tapping outside navigation components
+        document.addEventListener('click', (e) => {
+            if (!searchForm.contains(e.target)) {
+                autocompleteBox.classList.add('hidden');
+            }
+        });
+    </script>
+</body>
+</html>
